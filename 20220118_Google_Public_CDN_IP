@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""An example to fetch and print the Google Public DNS IP ranges."""
+
+import ipaddress
+import json
+import urllib.request
+
+publicdns_url = 'https://www.gstatic.com/ipranges/publicdns.json'
+
+
+def read_url(url):
+  try:
+    s = urllib.request.urlopen(url).read()
+    return json.loads(s)
+  except urllib.error.HTTPError:
+    print('Invalid HTTP response from %s' % url)
+    return {}
+  except json.decoder.JSONDecodeError:
+    print('Could not parse HTTP response from %s' % url)
+    return {}
+
+
+def main():
+  publicdns_json = read_url(publicdns_url)
+  print('{} published: {}'.format(publicdns_url,
+                                  publicdns_json.get('creationTime')))
+
+  locations = dict()
+  ipv4, ipv6 = set(), set()
+  for e in publicdns_json['prefixes']:
+    if e.get('ipv4Prefix'):
+      ip = ipaddress.IPv4Network(e.get('ipv4Prefix'), strict=False)
+      ipv4.add(ip)
+    if e.get('ipv6Prefix'):
+      ip = ipaddress.IPv6Network(e.get('ipv6Prefix'), strict=False)
+      ipv6.add(ip)
+    locations[ip] = e.get('scope')
+  print('IP ranges used by Google Public DNS for contacting '
+        'authoritative DNS servers:')
+  for i in list(ipv4) + list(ipv6):
+    print(i, locations[i])
+
+
+if __name__ == '__main__':
+  main()
